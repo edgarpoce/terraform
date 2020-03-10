@@ -96,6 +96,44 @@ func TestProviderTransformer_moduleChild(t *testing.T) {
 	}
 }
 
+// Test providers with FQNs that do not match the typeName
+func TestProviderTransformer_fqns(t *testing.T) {
+	mod := testModule(t, "transform-provider-fqns")
+
+	g := Graph{Path: addrs.RootModuleInstance}
+	{
+		tf := &ConfigTransformer{Config: mod}
+		if err := tf.Transform(&g); err != nil {
+			t.Fatalf("err: %s", err)
+		}
+	}
+
+	{
+		transform := &AttachResourceConfigTransformer{Config: mod}
+		if err := transform.Transform(&g); err != nil {
+			t.Fatalf("err: %s", err)
+		}
+	}
+
+	{
+		transform := &MissingProviderTransformer{Providers: []string{"aws"}, Config: mod}
+		if err := transform.Transform(&g); err != nil {
+			t.Fatalf("err: %s", err)
+		}
+	}
+
+	transform := &ProviderTransformer{Config: mod}
+	if err := transform.Transform(&g); err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	actual := strings.TrimSpace(g.String())
+	expected := strings.TrimSpace(testTransformProviderBasicStr)
+	if actual != expected {
+		t.Fatalf("bad:\n\n%s", actual)
+	}
+}
+
 func TestCloseProviderTransformer(t *testing.T) {
 	mod := testModule(t, "transform-provider-basic")
 
